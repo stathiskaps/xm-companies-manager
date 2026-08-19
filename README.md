@@ -241,7 +241,21 @@ Format the Go code with:
 make fmt
 ```
 
-## 10. Architecture
+## 10. (Optional) Stop the Services
+
+To stop the services:
+
+```bash
+docker compose down
+```
+
+To also remove the PostgreSQL volume and start with a clean database:
+
+```bash
+docker compose down -v
+```
+
+## 11. Architecture
 
 ```text
 HTTP Request
@@ -255,7 +269,7 @@ Service
    └── Event Producer → Kafka
 ```
 
-## 11. Development Resources
+## 12. Development Resources
 
 During the implementation of this exercise I used:
 
