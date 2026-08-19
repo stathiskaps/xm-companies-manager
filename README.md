@@ -29,14 +29,14 @@ To run tests, generate JWT tokens, or execute the linter locally:
 - Go
 - Make
 
-## 1. Clone the repository
+## 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd xm-companies-manager
 ```
 
-## 2. Configure the environment
+## 2. Configure the Environment
 
 Copy the provided example configuration:
 
@@ -46,26 +46,15 @@ cp .env.example .env
 
 The default values are suitable for running the project locally with Docker Compose.
 
-For local development, the default secret values can be used. To generate stronger secrets, run:
+For local development, the default placeholder values can be used. To generate stronger secrets, run:
 
 ```bash
 openssl rand -hex 32
 ```
 
-and replace:
+Use generated values to replace `JWT_SECRET` and/or `DB_PASSWORD` in `.env`.
 
-```env
-JWT_SECRET=change-me
-```
-and
-
-```env
-DB_PASSWORD=change-me
-```
-
-in `.env`.
-
-## 3. Start the application
+## 3. Start the Application
 
 ```bash
 make run
@@ -85,9 +74,11 @@ The API is available by default at:
 http://localhost:8001
 ```
 
-## 4. Generate a JWT token
+## 4. Generate a JWT Token
 
-All API endpoints require JWT authentication. Generate a test token by running:
+All API endpoints require JWT authentication.
+
+Generate a test token by running:
 
 ```bash
 make token
@@ -103,9 +94,9 @@ Authorization: Bearer <token>
 
 ## 5. Try the API
 
-You can testg the api by either using Postman or curl.
+You can test the API using either Postman or curl.
 
-### 1. Postman
+### Postman
 
 A Postman collection is included in the repository:
 
@@ -113,7 +104,7 @@ A Postman collection is included in the repository:
 XM_Companies_Manager.postman_collection.json
 ```
 
-Import it into Postman and configure the collection variable with the token you received at step 4:
+Import it into Postman and configure the collection variable with the token generated in step 4:
 
 ```text
 jwt = <generated-token>
@@ -130,15 +121,15 @@ DELETE /companies/:companyId
 
 The Create Company request automatically stores the returned company ID for use by the other requests.
 
-### 2. curl
+### curl
 
-Set the generated token you got at step 4:
+Set the generated token:
 
 ```bash
 export JWT="<generated-token>"
 ```
 
-#### Create a company
+#### Create a Company
 
 ```bash
 curl -X POST http://localhost:8001/companies/ \
@@ -155,14 +146,14 @@ curl -X POST http://localhost:8001/companies/ \
 
 The response contains the generated company UUID.
 
-#### Get a company
+#### Get a Company
 
 ```bash
 curl http://localhost:8001/companies/<company-id> \
   -H "Authorization: Bearer $JWT"
 ```
 
-#### Patch a company
+#### Patch a Company
 
 ```bash
 curl -X PATCH http://localhost:8001/companies/<company-id> \
@@ -174,16 +165,16 @@ curl -X PATCH http://localhost:8001/companies/<company-id> \
   }'
 ```
 
-#### Delete a company
+#### Delete a Company
 
 ```bash
 curl -X DELETE http://localhost:8001/companies/<company-id> \
   -H "Authorization: Bearer $JWT"
 ```
 
-## 6. Inspect Kafka events
+## 6. Inspect Kafka Events
 
-Mutating operations publish events to Kafka topic:
+Mutating operations publish events to the Kafka topic:
 
 ```text
 company-events
@@ -197,7 +188,7 @@ company.updated
 company.deleted
 ```
 
-After performing one or more mutating operations, inspect the produced Kafka events with:
+After performing one or more mutating operations, inspect the produced events with:
 
 ```bash
 docker compose exec kafka \
@@ -218,7 +209,7 @@ Example output:
 }
 ```
 
-## 7. Run the tests
+## 7. Run the Tests
 
 Integration tests use Testcontainers and start an isolated PostgreSQL instance automatically.
 
@@ -228,7 +219,7 @@ Docker must therefore be running.
 make test
 ```
 
-## 8. Install development tools
+## 8. Install Development Tools
 
 Install the configured version of `golangci-lint`:
 
@@ -236,7 +227,9 @@ Install the configured version of `golangci-lint`:
 make tools
 ```
 
-## 9. Run the linter (step 8 is required)
+## 9. Lint and Format
+
+After installing the development tools, run the linter:
 
 ```bash
 make lint
@@ -248,8 +241,9 @@ Format the Go code with:
 make fmt
 ```
 
-## 10. Abstract Architecture
+## 10. Architecture
 
+```text
 HTTP Request
     ↓
 Gin / JWT Middleware
@@ -259,11 +253,12 @@ Handler
 Service
    ├── Repository → sqlc → PostgreSQL
    └── Event Producer → Kafka
+```
 
 ## 11. Development Resources
 
 During the implementation of this exercise I used:
 
-- Documentation and tools/libraries familiar from previous projects
+- Documentation for the libraries and tools used
 - Google/search for documentation and troubleshooting
 - ChatGPT for development assistance
