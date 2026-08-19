@@ -5,18 +5,19 @@ import (
 	"net/http"
 
 	"xm-companies-manager/internal/repos"
+	"xm-companies-manager/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type CompanyHandler struct {
-	repo *repos.CompanyRepository
+	service *services.CompanyService
 }
 
-func NewCompanyHandler(repo *repos.CompanyRepository) *CompanyHandler {
+func NewCompanyHandler(service *services.CompanyService) *CompanyHandler {
 	return &CompanyHandler{
-		repo: repo,
+		service: service,
 	}
 }
 
@@ -29,7 +30,7 @@ func (h *CompanyHandler) GetCompany(c *gin.Context) {
 		return
 	}
 
-	company, err := h.repo.Get(c.Request.Context(), id)
+	company, err := h.service.Get(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, repos.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -45,6 +46,14 @@ func (h *CompanyHandler) GetCompany(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, company)
+}
+
+type CreateCompanyRequest struct {
+	Name              string `json:"name" binding:"required,max=15"`
+	Description       string `json:"description" binding:"max=3000"`
+	AmountOfEmployees *int32 `json:"amount_of_employees" binding:"required,gte=0"`
+	Registered        *bool  `json:"registered" binding:"required"`
+	Type              string `json:"type" binding:"required"`
 }
 
 func (h *CompanyHandler) CreateCompany(c *gin.Context) {
@@ -64,7 +73,7 @@ func (h *CompanyHandler) CreateCompany(c *gin.Context) {
 		return
 	}
 
-	company, err := h.repo.Create(
+	company, err := h.service.Create(
 		c.Request.Context(),
 		repos.CreateCompanyParams{
 			ID:                uuid.New(),
@@ -93,6 +102,14 @@ func (h *CompanyHandler) CreateCompany(c *gin.Context) {
 	c.JSON(http.StatusCreated, company)
 }
 
+type UpdateCompanyRequest struct {
+	Name              *string `json:"name" binding:"omitempty,max=15"`
+	Description       *string `json:"description" binding:"omitempty,max=3000"`
+	AmountOfEmployees *int32  `json:"amount_of_employees" binding:"omitempty,gte=0"`
+	Registered        *bool   `json:"registered"`
+	Type              *string `json:"type"`
+}
+
 func (h *CompanyHandler) UpdateCompany(c *gin.Context) {
 	id, err := parseUUID(c.Param("companyId"))
 	if err != nil {
@@ -102,7 +119,7 @@ func (h *CompanyHandler) UpdateCompany(c *gin.Context) {
 		return
 	}
 
-	var req PatchCompanyRequest
+	var req UpdateCompanyRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -118,7 +135,7 @@ func (h *CompanyHandler) UpdateCompany(c *gin.Context) {
 		return
 	}
 
-	company, err := h.repo.Patch(
+	company, err := h.service.Patch(
 		c.Request.Context(),
 		repos.PatchCompanyParams{
 			ID:                id,
@@ -163,7 +180,7 @@ func (h *CompanyHandler) DeleteCompany(c *gin.Context) {
 		return
 	}
 
-	err = h.repo.Delete(c.Request.Context(), id)
+	err = h.service.Delete(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, repos.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{

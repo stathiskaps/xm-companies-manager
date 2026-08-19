@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 	"xm-companies-manager/internal/database/sqlc"
+	"xm-companies-manager/internal/handlers"
 	"xm-companies-manager/internal/repos"
+	"xm-companies-manager/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -26,6 +28,27 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
+
+type publishedEvent struct {
+	eventType string
+	companyID uuid.UUID
+}
+
+type fakeProducer struct {
+	events []publishedEvent
+}
+
+func (p *fakeProducer) PublishCompanyEvent(
+	ctx context.Context,
+	eventType string,
+	companyID uuid.UUID,
+) error {
+	p.events = append(p.events, publishedEvent{
+		eventType: eventType,
+		companyID: companyID,
+	})
+	return nil
+}
 
 func setupTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
@@ -76,6 +99,38 @@ func setupTestDB(t *testing.T) *pgxpool.Pool {
 	t.Cleanup(pool.Close)
 
 	return pool
+}
+
+func setupTestApp(t *testing.T) (
+	*gin.Engine,
+	*sqlc.Queries,
+	*fakeProducer,
+	string,
+) {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
+
+	pool := setupTestDB(t)
+	queries := sqlc.New(pool)
+
+	companyRepo := repos.NewCompanyRepository(queries)
+
+	producer := &fakeProducer{}
+
+	companyService := services.NewCompanyService(
+		companyRepo,
+		producer,
+	)
+
+	companyHandler := handlers.NewCompanyHandler(companyService)
+
+	const jwtSecret = "integration-test-secret"
+
+	router := wire(companyHandler, jwtSecret)
+	token := generateTestJWT(t, jwtSecret)
+
+	return router, queries, producer, token
 }
 
 func generateTestJWT(t *testing.T, secret string) string {
@@ -141,16 +196,7 @@ func createTestCompany(
 }
 
 func TestGetCompany(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	pool := setupTestDB(t)
-	queries := sqlc.New(pool)
-	companyRepo := repos.NewCompanyRepository(queries)
-
-	const jwtSecret = "integration-test-secret"
-
-	router := wire(companyRepo, jwtSecret)
-	token := generateTestJWT(t, jwtSecret)
+	router, _, _, token := setupTestApp(t)
 
 	companyID := createTestCompany(
 		t,
@@ -195,16 +241,7 @@ func TestGetCompany(t *testing.T) {
 }
 
 func TestGetCompanyNotFound(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	pool := setupTestDB(t)
-	queries := sqlc.New(pool)
-	companyRepo := repos.NewCompanyRepository(queries)
-
-	const jwtSecret = "integration-test-secret"
-
-	router := wire(companyRepo, jwtSecret)
-	token := generateTestJWT(t, jwtSecret)
+	router, _, _, token := setupTestApp(t)
 
 	nonExistentID := uuid.New().String()
 
@@ -234,16 +271,7 @@ func TestGetCompanyNotFound(t *testing.T) {
 }
 
 func TestPatchCompany(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	pool := setupTestDB(t)
-	queries := sqlc.New(pool)
-	companyRepo := repos.NewCompanyRepository(queries)
-
-	const jwtSecret = "integration-test-secret"
-
-	router := wire(companyRepo, jwtSecret)
-	token := generateTestJWT(t, jwtSecret)
+	router, queries, _, token := setupTestApp(t)
 
 	companyID := createTestCompany(
 		t,
@@ -315,16 +343,7 @@ func TestPatchCompany(t *testing.T) {
 }
 
 func TestDeleteCompany(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	pool := setupTestDB(t)
-	queries := sqlc.New(pool)
-	companyRepo := repos.NewCompanyRepository(queries)
-
-	const jwtSecret = "integration-test-secret"
-
-	router := wire(companyRepo, jwtSecret)
-	token := generateTestJWT(t, jwtSecret)
+	router, queries, _, token := setupTestApp(t)
 
 	companyID := createTestCompany(
 		t,
@@ -361,16 +380,7 @@ func TestDeleteCompany(t *testing.T) {
 }
 
 func TestCreateCompany(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	pool := setupTestDB(t)
-	queries := sqlc.New(pool)
-	companyRepo := repos.NewCompanyRepository(queries)
-
-	const jwtSecret = "integration-test-secret"
-
-	router := wire(companyRepo, jwtSecret)
-	token := generateTestJWT(t, jwtSecret)
+	router, queries, producer, token := setupTestApp(t)
 
 	body := `{
 		"name": "XM Test",
@@ -413,6 +423,10 @@ func TestCreateCompany(t *testing.T) {
 	assert.Equal(t, int32(120), response.AmountOfEmployees)
 	assert.True(t, response.Registered)
 	assert.Equal(t, "Corporations", response.Type)
+	require.Len(t, producer.events, 1)
+
+	assert.Equal(t, "company.created", producer.events[0].eventType)
+	assert.Equal(t, response.ID, producer.events[0].companyID.String())
 
 	id, err := uuid.Parse(response.ID)
 	require.NoError(t, err)
@@ -433,16 +447,7 @@ func TestCreateCompany(t *testing.T) {
 }
 
 func TestCreateCompanyDuplicateName(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	pool := setupTestDB(t)
-	queries := sqlc.New(pool)
-	companyRepo := repos.NewCompanyRepository(queries)
-
-	const jwtSecret = "integration-test-secret"
-
-	router := wire(companyRepo, jwtSecret)
-	token := generateTestJWT(t, jwtSecret)
+	router, _, _, token := setupTestApp(t)
 
 	companyName := "Duplicate Test"
 

@@ -26,6 +26,7 @@ type JWTConfig struct {
 
 type KafkaConfig struct {
 	Brokers string
+	Topic   string
 }
 
 func Load() (*Config, error) {
@@ -43,6 +44,7 @@ func Load() (*Config, error) {
 		},
 		Kafka: KafkaConfig{
 			Brokers: os.Getenv("KAFKA_BROKERS"),
+			Topic:   os.Getenv("KAFKA_TOPIC"),
 		},
 	}
 
@@ -55,12 +57,14 @@ func Load() (*Config, error) {
 
 func (c *Config) validate() error {
 	required := map[string]string{
-		"DB_HOST":     c.Database.Host,
-		"DB_PORT":     c.Database.Port,
-		"DB_USER":     c.Database.User,
-		"DB_PASSWORD": c.Database.Password,
-		"DB_NAME":     c.Database.Name,
-		"JWT_SECRET":  c.JWT.Secret,
+		"DB_HOST":       c.Database.Host,
+		"DB_PORT":       c.Database.Port,
+		"DB_USER":       c.Database.User,
+		"DB_PASSWORD":   c.Database.Password,
+		"DB_NAME":       c.Database.Name,
+		"JWT_SECRET":    c.JWT.Secret,
+		"KAFKA_BROKERS": c.Kafka.Brokers,
+		"KAFKA_TOPIC":   c.Kafka.Topic,
 	}
 
 	for name, value := range required {
