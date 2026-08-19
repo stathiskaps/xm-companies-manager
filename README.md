@@ -32,7 +32,7 @@ To run tests, generate JWT tokens, or execute the linter locally:
 ## 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/stathiskaps/xm-companies-manager.git
 cd xm-companies-manager
 ```
 
