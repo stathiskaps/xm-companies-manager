@@ -78,7 +78,7 @@ http://localhost:8001
 
 All API endpoints require JWT authentication.
 
-Generate a test token by running:
+Generate a test token by running in a new terminal:
 
 ```bash
 make token
