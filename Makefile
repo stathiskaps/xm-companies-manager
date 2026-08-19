@@ -7,6 +7,9 @@ run:
 test:
 	cd $(API) && go test ./...
 
+token:
+	set -a; . ./.env; set +a; cd $(API) && go run ./cmd/token
+
 tools:
 	curl -sSfL https://golangci-lint.run/install.sh | sh -s v2.12.2
 
