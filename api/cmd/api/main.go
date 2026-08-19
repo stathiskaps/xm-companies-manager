@@ -8,6 +8,7 @@ import (
 	"xm-companies-manager/internal/database"
 	"xm-companies-manager/internal/database/sqlc"
 	"xm-companies-manager/internal/handlers"
+	"xm-companies-manager/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,7 +31,10 @@ func main() {
 
 	r := gin.Default()
 
+	r.Use()
+
 	companies := r.Group("/companies")
+	companies.Use(middleware.RequireAuth(cfg.JWT.Secret))
 
 	companies.POST("/", handlers.CreateCompany(queries))
 	companies.PATCH("/:companyId", handlers.UpdateCompany(queries))
