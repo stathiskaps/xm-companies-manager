@@ -9,6 +9,8 @@ import (
 	"xm-companies-manager/internal/database/sqlc"
 	"xm-companies-manager/internal/handlers"
 	"xm-companies-manager/internal/middleware"
+	"xm-companies-manager/internal/repos"
+	"xm-companies-manager/internal/routes"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,20 +30,24 @@ func main() {
 	defer pool.Close()
 
 	queries := sqlc.New(pool)
+	companyRepo := repos.NewCompanyRepository(queries)
 
-	r := gin.Default()
-
-	r.Use()
-
-	companies := r.Group("/companies")
-	companies.Use(middleware.RequireAuth(cfg.JWT.Secret))
-
-	companies.POST("/", handlers.CreateCompany(queries))
-	companies.PATCH("/:companyId", handlers.UpdateCompany(queries))
-	companies.DELETE("/:companyId", handlers.DeleteCompany(queries))
-	companies.GET("/:companyId", handlers.GetCompany(queries))
+	r := wire(companyRepo, cfg.JWT.Secret)
 
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func wire(companyRepo *repos.CompanyRepository, jwtSecret string) *gin.Engine {
+	r := gin.Default()
+
+	companiesGrp := r.Group("/companies")
+	companiesGrp.Use(middleware.RequireAuth(jwtSecret))
+
+	companyHandler := handlers.NewCompanyHandler(companyRepo)
+
+	routes.AddRoutes(companiesGrp, companyHandler)
+
+	return r
 }
